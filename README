@@ -1,0 +1,17 @@
+= sfPageContentsPlugin =
+
+== Install ==
+
+Checkout from Subversion repository as follows:
+
+{{{
+cd plugins
+svn co http://svn.tracfort.jp/svn/dino-symfony/plugins/sfPageContentsPlugin
+cd - && symfony cc
+}}}
+
+Or, download or install attached file.
+
+== Usage ==
+
+

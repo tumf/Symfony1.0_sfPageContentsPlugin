@@ -1,0 +1,614 @@
+ = sfPageContentsPlugin =
+
+ == 概要 ==
+
+改良を加え続けるWebシステムの開発では、UIデザイナと開発者の連携を密に取ることが成功の条件です。symfonyなどの高機能なフレームワークを利用した開発では、UIデザイナが完成させたHTMLを部品の共通化という名目で切り刻み、怪しげなタグを埋め込んでもはやUIデザイナではメンテナンス不可能な形にしてしまいます。そのため、開発者は常に些細なUIの修正にも立ち会い、時には手を動かしてメンテナンスを続けなくてはなりません。このようなことをなくすために、長い間ドキュメントとプレゼンテーションの分離について様々な技術が開発されてきましたが、現場のUIデザイナや顧客はあまりこのようなことに興味がないようです（なぜなら大変なのは開発者だから）。
+
+あくまでも開発者側の出来る限りの自助努力で、Webサイトの反復開発を容易にするために本プラグインを作成しました。`sfPageContentsPlugin`では、静的なHTMLから`symfony`で利用する、コンテンツ、テンプレート(レイアウト、ビュー、パーシャル)やアセット(CSSや画像ファイルなど)をあるルールに則って抜き出すツール群を提供します。
+
+ == 追加されるタスク ==
+
+ `sfPageContentsPlugin`をインストールすることで以下のタスクが追加されます:
+
+ * snip-assets　アセットのWebディレクトリへのコピーを行います。
+ * snip-layouts　レイアウトの切り抜きをします。
+ * snip-pages　ページコンテンツの切り抜きをします。
+ * snip-partials パーシャルの切り抜きをします。
+ * snip-views ビューの切り抜きをします。
+
+ * snip-all 上記すべてを実行します。
+
+ それぞれのタスクは`symfony`コマンドで確認することができます:
+ {{{
+ ./symfony -T
+ }}}
+
+ == インストール ==
+
+以下のように`Subversion`のリポジトリからチェックアウトしてください:
+
+{{{
+cd plugins
+svn co http://svn.tracfort.jp/svn/dino-symfony/plugins/sfPageContentsPlugin
+cd - && symfony cc
+}}}
+
+
+
+ == 追加されるテーブル ==
+ 
+静的なHTMLの任意の部分を切り取って名前をつけてデータベースに保存する事ができます。
+この時ページやコンテンツの保存に利用する為に内部的なテーブルを作成し利用します。
+
+ * sf_page_contents_page      ページ
+ * sf_page_contents_content　　コンテンツ
+ * sf_page_contents_page_content 　ページへのコンテンツの割り当て
+
+参照: source:plugins/sfPageContentsPlugin/config/schema.yml
+
+
+ == 使い方 ==
+
+`sfPageContentsPlugin`には、デザイナーの作成したHTML群からテンプレート（レイアウト・ビュー・パーシャル）とアセット（CSS・JS・画像ファイルなど）を抜き出すための`snipper`と呼ばれるツールが準備されています。`snipper`は`config/snipper.yml`に書かれたルールに従ってHTMLを切り抜いたり・加工したり・ファイルをコピーしたりするツールです。
+ここでは、`config/snipper.yml`の記述方法を説明します。
+
+まず、空の`config/snipper.yml`は何もしません。
+
+{{{
+---
+}}}
+
+アプリケーション毎の共通設定として、アプリケーション名とソースHTMLが入ったディレクトリを以下のように指定する必要があります:
+
+{{{
+---
+frontend:
+  htmldir: "doc/html/frontend"
+}}}
+
+`htmldir`は*必須*です。
+
+
+もし、デザイナから渡されたHTMLがShift-JISで書かれていたら以下のように変換の設定をすることも出来ます:
+
+{{{
+---
+frontend:
+  htmldir: "doc/html/frontend"
+  encode:
+    to: "UTF-8"
+}}}
+
+以上がアプリケーション毎の設定で、この下に`snip`対象毎にルールを記述していきます。
+
+ === アセット ===
+
+アセットに対してsnipperが行う作業はは多くの場合ファイルの移動です。従って`config/snipper.yml`にはファイルのコピーにかかわるルールを記述します。
+まず、以下のようにアセット用のルールを書き始めるために`assets`という項目を作成します:
+
+{{{
+---
+frontend:
+  htmldir: "doc/html/frontend"
+  assets:
+}}}
+
+単純に、`doc/html/frontend/css`を`web/css`にコピーしたいときには以下のようにします:
+
+{{{
+---
+frontend:
+  htmldir: "doc/html/frontend"
+  assets:
+    css:
+      dir: css
+}}}
+
+`config/snipper.yml`を記述後以下のようにしてsnipperを実行します:
+
+{{{
+./symfony snip-assets
+>> +file     web/css/main.css
+}}}
+
+`snipper`はファイルを生成(コピー)するときに、コピー先のファイルとコピーしようとするファイルを比べ、内容が同じであれば上書きしません。従って同じルールをすぐに繰り返しても何もしません:
+
+{{{
+./symfony snip-assets
+}}}
+
+ファイルが更新されたり、`config/snipper.yml`の修正により生成物が変更されるとファイルは上書きされます。
+
+
+`web/css`ではなく、`web2/css`にコピーしたいときには`dest`を指定します以下のようにします:
+
+{{{
+---
+frontend:
+  htmldir: "doc/html/frontend"
+  assets:
+    css:
+      dir: css
+      dest: web2/css
+}}}
+
+`web/css/old`以下のディレクトリが不要な場合は以下のように指定します:
+
+{{{
+---
+frontend:
+  htmldir: "doc/html/frontend"
+  assets:
+    css:
+      dir: css
+      prune: old
+}}}
+
+探索をしないディレクトリを複数の指定したいときには、以下のように配列で指定します:
+
+{{{
+      prune: [old, backup]
+}}}
+
+`.BAK`で終わるファイルを除外したいときには、`discard`を利用して、正規表現で以下のように書きます:
+
+{{{
+      discard: "/\.BAK$/"
+}}}
+
+`prune`と同じように、配列を使って以下のように複数記述可能です:
+
+{{{
+      discard: ["/\.BAK$/" "/\.orig/"]
+}}}
+
+ファイル名を指定してコピーしたいときには、`dir`ではなく`name`を使って以下のように書きます:
+
+{{{
+---
+frontend:
+  htmldir: "doc/html/frontend"
+  assets:
+    css:
+      name: "css/main.css"
+}}}
+
+このルールにより、`doc/html/frontend/css/main.css`が`web/css/main.css`にコピーされます。
+
+コピーするときにリネームすることも出来ます。以下のように書きます:
+
+{{{
+---
+frontend:
+  htmldir: "doc/html/frontend"
+  assets:
+    css:
+      name: "css/main.css"
+      rename: "css/main2.css"
+}}}
+
+{{{
+note:
+  ファイルのコピー時に`.svn`・`CVS`などのディレクトリは自動的に無視されます。
+}}}
+
+ === テンプレート ===
+ 
+  symfonyのテンプレートは、`layout`, `view`, `partial`の3種類あります。それぞれのテンプレートについて`snip-layouts`,`snip-views`,`snip-partials`の3種類のタスクにより`snipper`を実行します。テンプレートは3種類とも書き方がほぼ同じなので以下`view`を例に説明をします。
+
+もっとも基本的な例を以下に示します:
+
+{{{
+---
+frontend:
+  htmldir: "doc/html/frontend"
+  views:
+    member:
+      file: "member/register.html"
+      module: "member"
+      name: "registerSuccess"
+}}}
+
+この例は、単に`doc/html/frontend/member/register.html`を`apps/frontend/modules/member/templates/registerSuccess.php`にコピーするだけです。各項目について説明をします。
+`snip-views`のルールは`views:`の下に書きます。`file:`は元となるファイルを表し、`module:`と`name:`で変換先のビューを表します。ファイル名は、`name`に`.php`の拡張子を付加したものになります。
+
+{{{
+note:
+`views:`の直下の`memeber:`は、`views`の下でユニークであれば何でも構いません。ただし`all:`は予約されているので利用できません。
+}}}
+
+上記の基本となるHTMLからテンプレートへ加工するために、`fixups`を用います。`fixups`を使うには`views:`の下に`fixups:`を書きその下に変換ルールを追記していきます。以下は`fixups`のサンプルです:
+
+{{{
+---
+frontend:
+  htmldir: "doc/html/frontend"
+  views:
+    member:
+      file: "member/register.html"
+      module: "member"
+      name: "registerSuccess"
+      fixups:
+        -
+          replace:
+            from: こんにちは
+            to: さようなら
+}}}
+
+上記の例では、`doc/html/frontend/member/register.html`の中の`こんにちは`を`さようなら`に置換して`apps/frontend/modules/member/templates/registerSuccess.php`を生成します。
+
+{{{
+./symfony snip-views
+>> +file     apps/frontend/modules/plot/templates/displayForm.php
+}}}
+
+複数の`fixup`を書けば上から順番に実行されます。以下の例では、`こんにちは`が`さようなら`に、その後`さようなら`が`はじめまして`に置換されるため、結局`こんにちは`が`はじめまして`に置換されます。
+
+{{{
+      fixups:
+        -
+          replace:
+            from: こんにちは
+            to: さようなら
+        -
+          replace:
+            from: さようなら
+            to: はじめまして
+}}}
+
+`replace:`は置換作業するためのコマンドです。コマンドは以下のものが用意されています:
+
+ * replace
+ * replace-once
+ * replace-block
+ * replace-tag
+ * replace-match
+ * filter
+ * wrap-with
+ * use_helper
+ 
+ これらの個別の説明は、後述します。
+ 
+ ==== 出力 ====
+
+`さようなら`という文字列ではなく、`<?php greetings(); ?>`のようなPHPコードに置き換えたいときには2種類の方法があります。
+
+1つ目は以下のように`to`を利用する方法です:
+
+{{{
+      fixups:
+        -
+          replace:
+            from: こんにちは
+            to: "[?php greetings(); ?>"
+}}}
+
+
+symfonyのYAMLパーサの仕様で、YAML中に`<?php`と書いてしまうとどんな状況でも以降はPHPコードとして解釈されてしまいます。これを回避するため、`<?php`と書かずに`[?php`で代用します。`snipper`はこれを解釈して`<?php`を生成します。
+
+2つ目は以下のように`to`を`to-php`に変える方法です:
+
+{{{
+      fixups:
+        -
+          replace:
+            from: こんにちは
+            to-php: "greetings();"
+}}}
+
+`to-php`を利用すると与えられた文字列を、`<?php`と`?>`で囲って出力します。長めのコードを書きたい場合はYAMLの複数行記法を使って以下のように書くことも出来ます:
+
+{{{
+      fixups:
+        -
+          replace:
+            from: こんにちは
+            to-php: |
+              for($i=1;$i<10;$i++){
+                greetings();
+              }
+}}}
+
+ ==== all ====
+
+`all:`というルール名を利用するとすべてのビューに対して同じ`fixup`コマンドを適用することが出来ます。以下に例を示します:
+
+{{{
+---
+frontend:
+  htmldir: "doc/html/frontend"
+  views:
+    all:
+      fixups:
+        -
+          replace:
+            from: こんにちは
+            to: さようなら
+    member_form:
+      file: "member/register.html"
+      module: "member"
+      name: "registerSuccess"
+    member_confirm:
+      file: "member/confirm.html"
+      module: "member"
+      name: "confirmSuccess"
+}}}
+
+`fixup`のコマンドの実行結果が以前と変更が無い場合（つまり変換対象が見つからなかった場合）、
+デザイナから渡されたHTMLからいつの間にか変更対象が除かれてしまうことをに気づきやすくする為`snipeer`はエラーを出力します。
+
+このエラーを無視するには、以下のように`optional:`を利用します:
+{{{
+---
+frontend:
+  htmldir: "doc/html/frontend"
+  views:
+    all:
+      fixups:
+        -
+          replace:
+            optional:
+            from: こんにちは
+            to: さようなら
+    member_form:
+      file: "member/register.html"
+      module: "member"
+      name: "registerSuccess"
+    member_confirm:
+      file: "member/confirm.html"
+      module: "member"
+      name: "confirmSuccess"
+}}}
+
+`optional:`は`all:`の中でよく使われます。
+
+ ==== debug ====
+
+`debug:`を加える事でfixupコマンドの実行のログを出力します。
+ 
+{{{
+      fixups:
+        -
+          replace:
+            debug:
+            from: こんにちは
+            to: こんばんは
+}}}
+
+
+ ==== replace/replace-once コマンド ====
+ 
+ replaceコマンドは、パラメータで選択した文字列をすべて置換します。replace-onceははじめに見つけた一つのみ置換します。
+ 文字列の選択の方法は3種類あります。
+
+ 変換する文字列をそのまま指定するには、`from:`を利用します:
+ 
+{{{
+      fixups:
+        -
+          replace:
+            from: こんにちは
+            to: こんばんは
+}}}
+ 
+ 正規表現により、行指向で範囲を指定するには、 `begin-re:`〜`end-re:`を利用します:
+ 
+{{{
+      fixups:
+        -
+          replace:
+            begin-re: |<ul id="months">|
+            end-re: |</ul>|
+            to: |
+              <ul id="months">
+                <li>January</li>
+                <li>February</li>
+                ....
+              </ul>
+}}}
+
+`begin-re:`にマッチした行から、`end-re`にマッチした行までを`to:`で置き換えます。
+ 
+正規表現によりマッチした行で囲まれた内容を置換するには、`wrapped-begin-re:`〜`wrapped-end-re:`を利用します:
+ 
+{{{
+      fixups:
+        -
+          replace:
+            wrapped-begin-re: |<!-- BEGIN -->|
+            wrapped-end-re: |<!-- END -->|
+            to: "joyful contents."
+
+}}}
+
+`begin-re`〜`end-re`と似ていますが、マッチした行自体は残ります。
+
+
+ ==== replace-match コマンド ====
+
+ パターンマッチにより変換するには、`replace-match:`を利用します:
+
+{{{
+      fixups:
+        -
+          replace-match:
+            pattern: |<div[^>]*>|
+            to: "<div>"
+}}}
+
+ ==== replace-block コマンド ====
+
+`replace-block:`を利用する事で、特定のHTMLのコメントブロックで囲まれた内部を置換します。
+例えば以下のようにルールを記述した上で:
+
+{{{
+      fixups:
+        -
+          replace-block:
+            name: greetings
+            to: "おはよう"
+}}}
+
+以下のようなテンプレートを変換すると:
+
+{{{
+<!-- ### greetings -->
+あいさつ
+<!-- ### /greetings -->
+}}}
+
+以下のように置換されます:
+
+{{{
+<!-- ### greetings -->
+おはよう
+<!-- ### /greetings -->
+}}}
+
+予め、デザイナと範囲の記法を申し合わせておくと楽です。 
+
+ ==== replace-tag コマンド ====
+
+HTMLに存在する特定のタグについて、ファイルの先頭から順番にタグを置換していく。
+以下のように書くと、一番ファイルの先頭にあるinput要素が`<?php echo input_tag(...) ?>`に置換される:
+
+{{{
+      fixups:
+         -
+          replace-tag:
+            tag: input
+            to:
+              -
+                template-php: |
+                  echo input_tag(@name,@value,@attributes)
+}}}
+
+タグをXMLでパースしているので、正しいXMLである必要がある。
+
+
+上から3番目までを、置換するなら下記のように並べて書けば良い:
+
+{{{
+      fixups:
+         -
+          replace-tag:
+            tag: input
+            to:
+              -
+                template-php: |
+                  echo input_tag('@name','@value',@attributes)
+              -
+                template-php: |
+                  echo input_tag('@name','@value',@attributes)
+              -
+                template-php: |
+                  echo input_tag('@name','@value',@attributes)
+}}}
+
+
+上から２番目の`name`を`username`にしたいならば以下のように書けば良い:
+
+{{{
+      fixups:
+         -
+          replace-tag:
+            tag: input
+            to:
+              -
+                template-php: |
+                  echo input_tag('@name','@value',@attributes)
+              -
+                attributes:
+                  name: "username"
+                template-php: |
+                  echo input_tag('@name','@value',@attributes)
+              -
+                template-php: |
+                  echo input_tag('@name','@value',@attributes)
+}}}
+
+ ==== filter コマンド ====
+
+`call_user_func_array`を利用してPHPの関数を直接実行する:
+
+{{{
+      fixups:
+         -
+           func: mb_convert_encoding
+           param: ["こんにちは", "utf-8", "Shift_JIS"]
+           
+}}}
+
+実装は以下のようにシンプルである:
+
+{{{
+                 $src = call_user_func_array($param["func"],
+                                            array_marge(array($src) , $param["param"]));
+}}}
+ 
+ ==== wrap-with コマンド ====
+ 
+ `begin-re:`〜`end-re:`で囲まれた範囲の行の上に`before:`下に`after:`の文字列を挿入する。
+ 
+ ==== use_helper コマンド ====
+
+テンプレートの先頭に、`<?php use_helper('ヘルパー名') ?>`を挿入します。
+以下のように利用します:
+
+{{{
+      fixups:
+        -
+          use_helper: [Tag]
+}}}
+
+配列を利用して複数のヘルパーを同時に指定する事もできます:
+
+{{{
+      fixups:
+        -
+          use_helper: [Tag, Form]
+}}}
+
+
+ ==== カスタムコマンド ====
+
+ `lib/fixups`以下に、コマンドを定義する事でプロジェクト毎にカスタマイズコマンドを作成することが出来ます。
+ コマンドの定義は以下のようにします:
+
+{{{
+<?php
+function fixup_title($contents, $param = array())
+{
+  return preg_replace("|<title>.*</title>|",'<?php include_title() ?>',$contents);
+}
+}}}
+
+このファイルを、`lib/fixups/title.php`という名前で配置します。
+`config/snipper.yml`にて、以下のように書く事でこのコマンドを利用することが出来ます。
+
+{{{
+fixups:
+  -
+    title:
+}}}
+
+
+
+ 
+ 
+ 
+
+
+
+  
+ 
+
+
+ 
+ 
+ 
+
+
+
+
+

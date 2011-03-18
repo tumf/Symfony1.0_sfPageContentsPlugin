@@ -1,0 +1,14 @@
+generator:
+  class:              sfPropelAdminGenerator
+  param:
+    model_class:      Page
+    theme:            default
+
+    list:
+      display: [id, name, title, layout]
+      
+    edit:
+      display: [id, name, title, layout, body]
+      fields:
+        body: { params: size=80x50}
+

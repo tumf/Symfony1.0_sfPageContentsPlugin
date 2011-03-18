@@ -1,0 +1,64 @@
+---
+propel:
+  _attributes:      { package: plugins.sfPageContentsPlugin.lib.model }
+  sf_page_contents_page:
+    name:
+      type: varchar(255)
+    title:
+      type: varchar(255)
+      default: ""
+    keywords:
+      type: varchar(255)
+      default: ""
+    description:
+      type: varchar(255)
+      default: ""
+    url:
+      type: varchar(255)
+    layout:
+      type: varchar(255)
+      default: "layout"
+    is_public:
+      type: boolean
+      default: false
+    body:
+      type: longvarchar
+    modul:
+      type: varchar(255)
+      default: "page"
+    action:
+      type: varchar(255)
+      default: "show"
+    release_begin: timestamp
+    release_end:   timestamp
+    created_at:
+    updated_at:
+    _uniques:
+      page_name_uniq: [name]
+    _indexes:
+      page_name_idx:  [name]
+    
+  sf_page_contents_content:
+    name:
+      type: varchar(255)
+    body:
+      type: longvarchar
+    modul:
+      type: varchar(255)
+      default: "content"
+    action:
+      type: varchar(255)
+      default: "show"
+    created_at:
+    updated_at:
+    _indexes:
+      content_name_idx:  [name]
+      
+  sf_page_contents_page_content:
+    sf_page_contents_page_id:
+    sf_page_contents_content_id:
+    show_order:
+      type: integer
+      default: 1
+
+

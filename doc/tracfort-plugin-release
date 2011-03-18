@@ -1,0 +1,20 @@
+#!/bin/sh
+# plugin
+
+ver=0.0.1
+plugin=sfPageContentsPlugin
+dir=`mktemp -d`
+root=http://svn.tracfort.jp/svn
+project=dino-symfony
+
+
+mkdir -p ${dir}
+cd ${dir} || exit
+svn cp ${root}/${project}/plugins/${plugin}\
+    ${root}/${project}/tags/${plugin}-${ver}\
+    -m "${plugin} version ${ver} relaesed."
+
+svn export ${root}/${project}/tags/${plugin}-${ver} ${plugin}
+tar cvzf ${plugin}-${ver}.tgz ${plugin}
+mkdir -p ~/released
+cp -v ${plugin}-${ver}.tgz ~/released
